@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
 """
-build_views.py — Generate purpose-specific views of the bank into views/.
+build_views.py — Generate purpose-specific views from the gate results.
 
-data/ is the single source of truth. views/ is 100% generated: never edit
-it by hand, never commit fixes there — fix data/ or taxonomy/ and rebuild.
+data/ (active) + quarantine/ (held) are the source of truth; views/ is 100%
+generated. View policies follow guide section 16:
 
-Usage:
-    python3 scripts/build_views.py
-
-Outputs:
-  views/app/questions.jsonl        PilotQuest import feed (camelCase, FullQuestionRecord shape)
-  views/app/catalog.json           track -> topic -> chapter counts, for the learning map
-  views/study/exam/<track>/<topic>.jsonl        exam-style practice per licence & subject
-  views/study/flashcards/<track>/<topic>.jsonl  question -> answer recall cards
-  views/reels/candidates.jsonl|.csv             ranked, screen-friendly reel questions
-  views/review/queue.jsonl|.csv                 everything needing an instructor's decision
-  views/MANIFEST.json                           counts per view + build date
+  views/app/questions.jsonl      active records that pass the full gate (exam and/or flashcard mode)
+  views/app/catalog.json         track -> topic -> chapter counts
+  views/study/exam/<track>/<topic>.jsonl        exam gate only
+  views/study/flashcards/<track>/<topic>.jsonl  flashcard gate only
+  views/reels/candidates.jsonl|.csv             exam gate + commercial rights + concise + not yet used
+  views/review/queue.jsonl|.csv                 every non-active record with reasons and next action
+  views/MANIFEST.json                           counts
+  reports/publishable_summary.md                the human-readable publishable-questions table
 """
-import csv
 import collections
+import csv
 import datetime
 import json
 import os
@@ -28,35 +25,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import taxonomy  # noqa: E402
+import gates  # noqa: E402
 
 VIEWS = os.path.join(taxonomy.ROOT, "views")
-
-# ---- Policy knobs -----------------------------------------------------------
-# Flags that keep a usable question out of exam practice (it may still be a flashcard).
-EXAM_BLOCKING_FLAGS = {"templated_distractors", "needs_figure", "missing_calculation_steps"}
-# Flags that keep a question out of every student-facing view until reviewed.
-# The Air Law audit v2 recommends holding these 230; set True to enforce it.
-HOLD_PENDING_REVIEW = False
-REVIEW_HOLD_FLAGS = {"audit_v2_pending_provision_review"}
 REEL_LEDGER = os.path.join(taxonomy.TAX, "reels_used.csv")
-# -----------------------------------------------------------------------------
 
 
 def slug(track_id):
     return re.sub(r"[^a-z0-9]+", "-", track_id.lower()).strip("-")
-
-
-def held(q):
-    return HOLD_PENDING_REVIEW and bool(REVIEW_HOLD_FLAGS & set(q["quality_flags"]))
-
-
-def modes(q):
-    if not taxonomy.is_usable(q) or held(q):
-        return []
-    m = ["flashcard"]
-    if q["question_style"] == "exam_style" and not (EXAM_BLOCKING_FLAGS & set(q["quality_flags"])):
-        m.insert(0, "exam")
-    return m
 
 
 def correct_text(q):
@@ -65,66 +41,33 @@ def correct_text(q):
     return " / ".join(by_label.get(l, l) for l in labels)
 
 
-def app_record(q):
-    media = (q.get("media") or [None])[0]
+def app_record(q, ev):
     rec = {
-        "questionId": q["question_id"],
-        "authority": q["authority"],
-        "licence": q["licence"],
-        "trackId": q["track_id"],
-        "applicableTracks": q["applicable_licences"],
-        "topic": q["topic"],
-        "topicName": q["topic_name"],
-        "subject": q["subject"],
-        "chapterTitle": q["chapter_title"],
+        "questionId": q["question_id"], "questionVersion": q.get("question_version", 1),
+        "authority": q["authority"], "licence": q["licence"], "trackId": q["track_id"],
+        "applicableTracks": q["applicable_licences"], "topic": q["topic"], "topicName": q["topic_name"],
+        "subject": q["subject"], "chapterTitle": q["chapter_title"],
         "learningObjective": q.get("learning_objective") or None,
-        "questionType": q["question_type"],
-        "questionText": q["question_text"],
-        "choices": q.get("choices", []),
-        "correctAnswer": q["correct_answer"],
-        "explanation": q.get("explanation", ""),
+        "learningObjectiveCode": q.get("learning_objective_code") or None,
+        "questionType": q["question_type"], "questionText": q["question_text"], "choices": q.get("choices", []),
+        "correctAnswer": q["correct_answer"], "explanation": q.get("explanation", ""),
         "incorrectAnswerExplanations": q.get("incorrect_answer_explanations") or {},
         "regulationReference": q.get("regulation_reference") or None,
         "handbookReference": q.get("handbook_reference") or None,
-        "difficulty": q["difficulty"],
-        "sourceTitle": q["source_title"],
-        "sourceUrl": q.get("source_url") or None,
+        "difficulty": q["difficulty"], "sourceTitle": q["source_title"], "sourceUrl": q.get("source_url") or None,
         "lastVerified": q.get("last_verified"),
-        "requiresImage": bool(media),
+        "requiresImage": bool(q.get("image_required")),
         "requiresScratchpad": q["question_type"] == "calculation" or bool(q.get("calculation_steps")),
-        "modes": modes(q),
-        "reviewPending": bool(REVIEW_HOLD_FLAGS & set(q["quality_flags"])),
-        "nonCommercialOnly": "non_commercial_licence" in q["quality_flags"],
+        "modes": [m for m in ("exam", "flashcard") if ev[m]],
+        "publicationTier": ev["tier"],
+        "studyNotice": taxonomy.POLICY["study_tier"]["study_notice"],
     }
-    if media:
-        rec["image"] = {"filePath": media["file_path"], "altText": media["alt_text"],
-                        "attribution": media.get("attribution"), "licence": media["licence"]}
+    if ev["tier"] == "study" and taxonomy.regulation_dependent(q):
+        rec["regulatoryNotice"] = taxonomy.POLICY["study_tier"]["regulatory_notice"]
+    if q.get("image_required"):
+        rec["image"] = {"filePath": q["image_path"], "altText": q.get("image_alt_text"),
+                        "attribution": q.get("image_attribution"), "licence": q.get("image_license")}
     return rec
-
-
-def reel_score(q, used):
-    """Return (score, reasons) or None if unsuitable for a 16:9 quiz board."""
-    if "exam" not in modes(q) or q["question_type"] != "single_choice" or q.get("media"):
-        return None
-    # Reels promote PilotQuest, so non-commercial-only content is excluded.
-    if q["question_id"] in used or (REVIEW_HOLD_FLAGS | {"non_commercial_licence"}) & set(q["quality_flags"]):
-        return None
-    choices = q.get("choices", [])
-    longest = max((len(c["text"]) for c in choices), default=999)
-    if not 3 <= len(choices) <= 4 or len(q["question_text"]) > 140 or longest > 70:
-        return None
-    score, why = 0, []
-    if q["licence_level"] in ("private", "recreational"):
-        score += 3; why.append("PPL-level audience")
-    if len(q["question_text"]) <= 70:
-        score += 2; why.append("short question")
-    if longest <= 35:
-        score += 1; why.append("short options")
-    if q["provenance"] == "official_sample":
-        score += 1; why.append("official sample")
-    if q["topic"] in ("PRINCIPLES_OF_FLIGHT", "METEOROLOGY", "HUMAN_PERFORMANCE", "OPERATIONAL_PROCEDURES"):
-        score += 1; why.append("visual/scenario topic")
-    return score, why
 
 
 def write_jsonl(path, rows):
@@ -141,106 +84,141 @@ def write_csv(path, rows, fields):
         w.writerows(rows)
 
 
+def reel_ok(q, used):
+    choices = q.get("choices", [])
+    return (q["question_id"] not in used and 3 <= len(choices) <= 4 and len(q["question_text"]) <= 140
+            and max(len(c["text"]) for c in choices) <= 70)
+
+
+def summary_table(bank, evs, path):
+    """reports/publishable_summary.md — guide section 19.5 / 18 reporting."""
+    rows = collections.OrderedDict()
+    for q in sorted(bank, key=lambda q: (q["authority"], q["track_id"], q["topic"])):
+        ev = evs[q["question_id"]]
+        k = (q["authority"], q["track_id"])
+        r = rows.setdefault(k, collections.Counter())
+        r["canonical"] += 1
+        r["exam"] += ev["exam"]
+        r["flashcard"] += ev["flashcard"]
+        r["verified_tier"] += ev["tier"] == "verified"
+        r["study_tier"] += ev["tier"] == "study"
+        r["reel"] += ev["reel"]
+        r[q["status"]] += 1
+        r["rights_blocked"] += "rights" in ev["failed"]
+    tot = sum(rows.values(), collections.Counter())
+    first = collections.Counter((evs[q["question_id"]]["failed"] or ["—"])[0] for q in bank)
+    anyfail = collections.Counter(g for q in bank for g in evs[q["question_id"]]["failed"])
+    states = collections.Counter(q["pipeline_state"] for q in bank)
+    topics = collections.defaultdict(collections.Counter)
+    for q in bank:
+        ev = evs[q["question_id"]]
+        topics[q["topic"]]["canonical"] += 1
+        topics[q["topic"]]["exam"] += ev["exam"]
+        topics[q["topic"]]["flashcard"] += ev["flashcard"]
+
+    L = [f"# Publishable questions — {datetime.date.today().isoformat()}", "",
+         "Generated by `scripts/build_views.py` from the per-record activation gate "
+         "(`scripts/gates.py`, guide §15). Canonical count is **not** a usable count (guide §18).", "",
+         f"Policy: platform_commercial = **{taxonomy.POLICY['platform_commercial']}**; "
+         f"study tier enabled = **{taxonomy.POLICY['study_tier']['enabled']}** "
+         "(verified tier = every gate; study tier = same correctness, rights and media gates, relaxed process gates).", "",
+         "## By licence track", "",
+         "| Authority | Track | Canonical | Published | of which verified tier | of which study tier | Active exam | Active flashcard | Reel-eligible | Quarantined | of which rights-blocked | Restricted | Historical/superseded | Rejected |",
+         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for (auth, track), r in rows.items():
+        L.append(f"| {auth} | {track} | {r['canonical']} | {r['active']} | {r['verified_tier']} | {r['study_tier']} | {r['exam']} | {r['flashcard']} | {r['reel']} | "
+                 f"{r['quarantined']} | {r['rights_blocked']} | {r['restricted_do_not_use']} | "
+                 f"{r['historical_reference_only'] + r['superseded']} | {r['rejected']} |")
+    L.append(f"| **Total** | | **{tot['canonical']}** | **{tot['active']}** | **{tot['verified_tier']}** | **{tot['study_tier']}** | **{tot['exam']}** | **{tot['flashcard']}** | **{tot['reel']}** | "
+             f"**{tot['quarantined']}** | **{tot['rights_blocked']}** | **{tot['restricted_do_not_use']}** | "
+             f"**{tot['historical_reference_only'] + tot['superseded']}** | **{tot['rejected']}** |")
+    L += ["", "## By study area", "", "| Topic | Canonical | Active exam | Active flashcard |", "|---|---:|---:|---:|"]
+    for t in taxonomy.TOPICS:
+        c = topics.get(t, collections.Counter())
+        L.append(f"| {t} | {c['canonical']} | {c['exam']} | {c['flashcard']} |")
+    L += ["", "## Why records are held", "",
+          "| Gate | First blocker (records) | Failing at all (records) | Next action |", "|---|---:|---:|---|"]
+    for g in gates.NEXT_ACTION:
+        if anyfail[g]:
+            L.append(f"| {g} | {first[g]} | {anyfail[g]} | {gates.NEXT_ACTION[g]} |")
+    L += ["", "## Pipeline state", "", "| State | Records |", "|---|---:|"]
+    for s in gates.PIPELINE:
+        if states[s]:
+            L.append(f"| {s} | {states[s]} |")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(L) + "\n")
+    return tot
+
+
 def main():
-    bank = []
-    for path, recs in taxonomy.load_bank():
-        for q in recs:
-            if "topic" not in q:
-                sys.exit(f"{q['question_id']} is not categorized — run scripts/categorize.py --write first")
-            bank.append(q)
+    bank = [q for _, rs in taxonomy.load_bank() for q in rs]
+    evs = {q["question_id"]: gates.evaluate(q) for q in bank}
 
     if os.path.isdir(VIEWS):
         shutil.rmtree(VIEWS)
-    manifest = {"built": datetime.date.today().isoformat(), "bank_total": len(bank), "views": {}}
+    manifest = {"built": datetime.date.today().isoformat(), "canonical": len(bank), "views": {}}
 
-    # --- app -----------------------------------------------------------------
-    app = [app_record(q) for q in bank if modes(q)]
+    active = [q for q in bank if q["status"] == "active" and evs[q["question_id"]]["flashcard"]]
+    app = [app_record(q, evs[q["question_id"]]) for q in active]
     write_jsonl(os.path.join(VIEWS, "app", "questions.jsonl"), app)
     catalog = {}
     for r in app:
         for track in r["applicableTracks"]:
-            t = catalog.setdefault(track, {"topics": {}})
-            tp = t["topics"].setdefault(r["topic"], {"name": r["topicName"], "exam": 0,
-                                                      "flashcard": 0, "chapters": {}})
+            tp = catalog.setdefault(track, {"topics": {}})["topics"].setdefault(
+                r["topic"], {"name": r["topicName"], "exam": 0, "flashcard": 0, "chapters": {}})
             for m in r["modes"]:
                 tp[m] += 1
             tp["chapters"][r["chapterTitle"]] = tp["chapters"].get(r["chapterTitle"], 0) + 1
     with open(os.path.join(VIEWS, "app", "catalog.json"), "w", encoding="utf-8") as f:
-        json.dump({"built": manifest["built"], "tracks": dict(sorted(catalog.items()))}, f,
-                  ensure_ascii=False, indent=1)
-    manifest["views"]["app"] = {"questions": len(app),
-                                "exam": sum("exam" in r["modes"] for r in app),
-                                "flashcard_only": sum(r["modes"] == ["flashcard"] for r in app)}
+        json.dump({"built": manifest["built"], "tracks": dict(sorted(catalog.items()))}, f, ensure_ascii=False, indent=1)
 
-    # --- study: exam practice + flashcards, per licence track and topic -------
-    exam_buckets, card_buckets = collections.defaultdict(list), collections.defaultdict(list)
-    level_rank = {"beginner": 0, "intermediate": 1, "advanced": 2}
-    for q in sorted(bank, key=lambda q: (level_rank[q["difficulty"]], q["question_id"])):
-        m = modes(q)
+    exam_b, card_b = collections.defaultdict(list), collections.defaultdict(list)
+    rank = {"beginner": 0, "intermediate": 1, "advanced": 2}
+    for q in sorted(active, key=lambda q: (rank[q["difficulty"]], q["question_id"])):
+        ev = evs[q["question_id"]]
         for track in q["applicable_licences"]:
-            if "exam" in m:
-                exam_buckets[(track, q["topic"])].append(q)
-            if "flashcard" in m:
-                card_buckets[(track, q["topic"])].append({
-                    "question_id": q["question_id"], "topic": q["topic"],
-                    "chapter_title": q["chapter_title"], "difficulty": q["difficulty"],
-                    "front": q["question_text"], "back": correct_text(q),
-                    "explanation": q.get("explanation", ""),
-                    "reference": q.get("regulation_reference") or q.get("handbook_reference") or ""})
-    for (track, topic), rows in exam_buckets.items():
+            if ev["exam"]:
+                exam_b[(track, q["topic"])].append(q)
+            card_b[(track, q["topic"])].append({
+                "question_id": q["question_id"], "topic": q["topic"], "chapter_title": q["chapter_title"],
+                "difficulty": q["difficulty"], "front": q["question_text"], "back": correct_text(q),
+                "explanation": q.get("explanation", ""),
+                "reference": q.get("regulation_reference") or q.get("handbook_reference") or ""})
+    for (track, topic), rows in exam_b.items():
         write_jsonl(os.path.join(VIEWS, "study", "exam", slug(track), f"{topic.lower()}.jsonl"), rows)
-    for (track, topic), rows in card_buckets.items():
+    for (track, topic), rows in card_b.items():
         write_jsonl(os.path.join(VIEWS, "study", "flashcards", slug(track), f"{topic.lower()}.jsonl"), rows)
-    manifest["views"]["study"] = {
-        "exam_files": len(exam_buckets), "flashcard_files": len(card_buckets),
-        "exam_by_track": dict(sorted(collections.Counter(t for (t, _), v in exam_buckets.items()
-                                                         for _ in v).items())),
-        "flashcards_by_track": dict(sorted(collections.Counter(t for (t, _), v in card_buckets.items()
-                                                               for _ in v).items()))}
 
-    # --- reels ----------------------------------------------------------------
     used = set()
     if os.path.exists(REEL_LEDGER):
         with open(REEL_LEDGER, encoding="utf-8") as f:
             used = {r["question_id"] for r in csv.DictReader(f)}
-    reels = []
-    for q in bank:
-        s = reel_score(q, used)
-        if s:
-            reels.append({"reel_score": s[0], "why": "; ".join(s[1]), "question_id": q["question_id"],
-                          "track_id": q["track_id"], "topic": q["topic"],
-                          "tag_line": f"{q['licence_level'].replace('_', ' ').upper()} · {q['topic_name'].upper()}",
-                          "question_text": q["question_text"], "choices": q["choices"],
-                          "correct_answer": q["correct_answer"], "correct_text": correct_text(q),
-                          "explanation": q.get("explanation", "")})
-    reels.sort(key=lambda r: (-r["reel_score"], r["question_id"]))
+    reels = [{"question_id": q["question_id"], "track_id": q["track_id"], "topic": q["topic"],
+              "tag_line": f"{q['licence_level'].replace('_', ' ').upper()} · {q['topic_name'].upper()}",
+              "question_text": q["question_text"], "choices": q["choices"], "correct_answer": q["correct_answer"],
+              "correct_text": correct_text(q), "explanation": q.get("explanation", "")}
+             for q in active if evs[q["question_id"]]["reel"] and reel_ok(q, used)]
+    reels.sort(key=lambda r: (len(r["question_text"]), r["question_id"]))
     os.makedirs(os.path.join(VIEWS, "reels"), exist_ok=True)
     write_jsonl(os.path.join(VIEWS, "reels", "candidates.jsonl"), reels)
     write_csv(os.path.join(VIEWS, "reels", "candidates.csv"),
               [dict(r, choices=" | ".join(f"{c['label']}) {c['text']}" for c in r["choices"])) for r in reels],
-              ["reel_score", "question_id", "topic", "question_text", "choices", "correct_answer",
-               "correct_text", "why"])
-    manifest["views"]["reels"] = {"candidates": len(reels), "already_used": len(used)}
+              ["question_id", "topic", "tag_line", "question_text", "choices", "correct_answer", "correct_text"])
 
-    # --- review queue -----------------------------------------------------------
-    review = []
-    for q in bank:
-        flags = [f for f in q["quality_flags"] if f not in ("templated_distractors", "non_commercial_licence")]
-        if flags or not taxonomy.is_usable(q):
-            review.append({"question_id": q["question_id"], "status": q["status"],
-                           "reuse_allowed": q["reuse_allowed"], "flags": flags,
-                           "track_id": q["track_id"], "topic": q["topic"],
-                           "chapter_title": q["chapter_title"],
-                           "question_text": q["question_text"], "correct_text": correct_text(q),
-                           "regulation_reference": q.get("regulation_reference", "")})
+    review = [{"question_id": q["question_id"], "status": q["status"], "pipeline_state": q["pipeline_state"],
+               "failed_gates": evs[q["question_id"]]["failed"], "next_action": evs[q["question_id"]]["next_action"],
+               "hold_reasons": q.get("hold_reasons", []), "track_id": q["track_id"], "topic": q["topic"],
+               "question_text": q["question_text"], "correct_text": correct_text(q)}
+              for q in bank if q["status"] != "active"]
     write_jsonl(os.path.join(VIEWS, "review", "queue.jsonl"), review)
     write_csv(os.path.join(VIEWS, "review", "queue.csv"),
-              [dict(r, flags="|".join(r["flags"])) for r in review],
-              ["question_id", "status", "reuse_allowed", "flags", "track_id", "topic",
-               "chapter_title", "question_text", "correct_text", "regulation_reference"])
-    manifest["views"]["review"] = {"items": len(review),
-                                   "by_flag": dict(collections.Counter(f for r in review for f in r["flags"]))}
+              [dict(r, failed_gates="|".join(r["failed_gates"]), hold_reasons="|".join(r["hold_reasons"])) for r in review],
+              ["question_id", "status", "pipeline_state", "failed_gates", "next_action", "hold_reasons",
+               "track_id", "topic", "question_text", "correct_text"])
 
+    tot = summary_table(bank, evs, os.path.join(taxonomy.ROOT, "reports", "publishable_summary.md"))
+    manifest["views"] = {"app": len(app), "exam": tot["exam"], "flashcard": tot["flashcard"], "reels": len(reels),
+                         "review": len(review), "status": dict(collections.Counter(q["status"] for q in bank))}
     with open(os.path.join(VIEWS, "MANIFEST.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=1)
     print(json.dumps(manifest, indent=1))

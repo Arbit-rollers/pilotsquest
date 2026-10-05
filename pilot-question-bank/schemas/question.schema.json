@@ -250,10 +250,12 @@
       "type": "string"
     },
     "reuse_allowed": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Derived from the rights record and policy; never trusted from imported data."
     },
     "verified": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "Derived: true only when every applicable review has passed."
     },
     "last_verified": {
       "type": "string",
@@ -309,16 +311,325 @@
     "status": {
       "type": "string",
       "enum": [
-        "quarantined",
         "active",
-        "archived",
-        "rejected"
+        "quarantined",
+        "restricted_do_not_use",
+        "historical_reference_only",
+        "superseded",
+        "rejected",
+        "archived"
       ],
-      "default": "quarantined"
+      "default": "quarantined",
+      "description": "Computed by scripts/gates.py — never set by hand or by import."
     },
     "source_record_id": {
+      "type": "string"
+    },
+    "source_id": {
       "type": "string",
-      "description": "The contributor's own ID for this record, kept for traceability."
+      "description": "Registered source (sources/source_manifest.json)"
+    },
+    "source_pdf_filename": {
+      "type": "string"
+    },
+    "source_page": {
+      "type": [
+        "integer",
+        "string",
+        "null"
+      ]
+    },
+    "source_question_number": {
+      "type": "string"
+    },
+    "source_answer_page": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "source_raw_file": {
+      "type": "string"
+    },
+    "source_has_answer_key": {
+      "type": "boolean"
+    },
+    "original_question_text": {
+      "type": "string"
+    },
+    "original_choices": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "original_stated_answer": {
+      "type": [
+        "string",
+        "array"
+      ]
+    },
+    "original_explanation": {
+      "type": "string"
+    },
+    "source_subject_label": {
+      "type": "string",
+      "description": "Source's own subject label when categorize.py corrected it"
+    },
+    "extraction_method": {
+      "type": "string",
+      "enum": [
+        "native_text",
+        "ocr",
+        "manual"
+      ]
+    },
+    "extraction_confidence": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "answer_match_confidence": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "ocr_uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "regulatory_status": {
+      "type": "string",
+      "enum": [
+        "",
+        "current_verified",
+        "current_pending_second_review",
+        "outdated_but_corrected",
+        "historical_reference_only",
+        "superseded",
+        "jurisdiction_uncertain",
+        "quarantined",
+        "rejected"
+      ]
+    },
+    "regulatory_note": {
+      "type": "string"
+    },
+    "regulation_provision": {
+      "type": "string"
+    },
+    "source_effective_date": {
+      "type": "string"
+    },
+    "source_accessed_date": {
+      "type": "string"
+    },
+    "rights_record_id": {
+      "type": "string",
+      "description": "taxonomy/rights_records.csv"
+    },
+    "technical_review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "passed",
+        "failed"
+      ]
+    },
+    "technical_review_evidence": {
+      "type": "string"
+    },
+    "second_check_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "passed",
+        "failed",
+        "not_required"
+      ]
+    },
+    "regulatory_review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "passed",
+        "failed",
+        "not_applicable"
+      ]
+    },
+    "editorial_review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "passed",
+        "failed"
+      ]
+    },
+    "media_review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "passed",
+        "failed",
+        "not_required"
+      ]
+    },
+    "duplicate_review_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "passed",
+        "failed"
+      ]
+    },
+    "similarity_score": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "question_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "supersedes_question_id": {
+      "type": "string"
+    },
+    "superseded_by_question_id": {
+      "type": "string"
+    },
+    "active_study_bank": {
+      "type": "boolean"
+    },
+    "pipeline_state": {
+      "type": "string",
+      "enum": [
+        "received",
+        "extracted",
+        "answer_matched",
+        "classified",
+        "rights_reviewed",
+        "technically_verified",
+        "regulatorily_verified",
+        "media_verified",
+        "duplicate_reviewed",
+        "approved",
+        "active"
+      ]
+    },
+    "gate_failures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "hold_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "review_history": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "shuffle_algorithm": {
+      "type": "string"
+    },
+    "shuffle_seed": {
+      "type": "string"
+    },
+    "source_payload": {
+      "type": "object",
+      "description": "Imported fields not yet mapped to the schema (guide section 12)"
+    },
+    "image_required": {
+      "type": "boolean"
+    },
+    "image_answer_dependency": {
+      "type": "string"
+    },
+    "image_id": {
+      "type": "string"
+    },
+    "image_status": {
+      "type": "string",
+      "enum": [
+        "missing",
+        "awaiting_permission",
+        "awaiting_recreation",
+        "ready",
+        "rejected"
+      ]
+    },
+    "image_pdf_page": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "image_position": {
+      "type": "string"
+    },
+    "image_path": {
+      "type": "string"
+    },
+    "image_source_title": {
+      "type": "string"
+    },
+    "image_source_location": {
+      "type": "string"
+    },
+    "image_license": {
+      "type": "string"
+    },
+    "image_rights_record_id": {
+      "type": "string"
+    },
+    "image_copyright_status": {
+      "type": "string"
+    },
+    "image_attribution": {
+      "type": "string"
+    },
+    "image_alt_text": {
+      "type": "string"
+    },
+    "image_caption": {
+      "type": "string"
+    },
+    "image_width": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "image_height": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "image_annotations": {
+      "type": "array"
+    },
+    "image_hotspots": {
+      "type": "array"
+    },
+    "image_verified": {
+      "type": "boolean"
+    },
+    "image_accessibility_verified": {
+      "type": "boolean"
     }
   },
   "allOf": [

@@ -91,3 +91,22 @@ This followed the same check-before-integrate diligence as every prior batch, an
 Cleanup applied before ingestion: renamed IDs to `EASA-ATPLA-NAV-NNNNNN` (061) / `EASA-ATPLA-RNAV-NNNNNN` (062); applied the same deterministic MD5-hash correct-answer-position shuffle used in prior conversions (the source data self-skewed ~45% of correct answers to position A); regulation_reference/source_title/source_url point to EASA's own Appendix 1 to FCL.025 (Subjects 061/062), not the source book. `scripts/detect_duplicates.py` flagged one near-duplicate pair within the new batch (`EASA-ATPLA-NAV-000123`/`000127`) — checked and confirmed a false positive: both are legitimate 1-in-60-rule drill questions with different numeric inputs and independently-verified-correct answers, the same templated-drill pattern already used throughout the bank's calculation content (e.g. the repeated "Fuel flow is X L/h for Y minutes" questions).
 
 Result: `data/easa/atpl-a/general-navigation/en/original_syllabus_aligned_batch1.jsonl` (178 questions, 164 active / 14 quarantined) and `data/easa/atpl-a/radio-navigation/en/original_syllabus_aligned_batch1.jsonl` (88 questions, 80 active / 8 quarantined) — first EASA content of any kind for both subjects. See `research/coverage_report.csv` for the full accounting.
+
+## Source registered and restricted: TAFA "PPL(A) Questions Bank" (2026-10-05)
+
+The user supplied `/Users/sam/pilots_quest/books/PPL/TopAir.pdf` (231 pages, sha256 `ee9e30351d5d…`; copied to `inbox/TopAir.pdf`, git-ignored). Registered as `SRC-TAFA-PPLA-QB-2015` with rights record `RR-TAFA-PPLA-QB-2015` (commercial use **unconfirmed**, review **pending**).
+
+Findings from reading the PDF:
+- It is a flight school's compiled bank (footer "Latest information about the exam can be found at www.tafa.aero"; PDF metadata "Air law engleski knjiga.doc", created 2015, modified 2017). No copyright notice, licence or authorship statement. Having no notice does not grant reuse rights.
+- Its wording follows commercial UK PPL textbook review questions (e.g. "Which of a), b), c) and d), below, most correctly completes the following statement?"). The underlying source is not proven.
+- It is JAA-era (JAA PPL, JAR-FCL, "Class 1 or 2" medicals for a "JAA PPL"), so its regulatory content is outdated against Part-FCL/SERA.
+- There is no answer key. Several sections state "The correct answer under a. During the exam the order of answers will be different." It contains 86 figure references (e.g. "Figure PPL Nav-12", "Fig.PPl Kom-1").
+- Raw extraction to `extracted/` (git-ignored, never published) found 1,167 items across 9 subjects. Numbering restarts per subject. 943 items have 4 options and 203 have 3; about 20 are multi-part.
+
+Decision under guide §7: **`restricted_do_not_use`**. No batch was built from its wording or figures, and nothing entered `quarantine/` or `data/`. Allowed uses are mapping syllabus objectives and writing genuinely original replacements from current official sources (EASA Part-FCL AMC/GM FCL.210, SERA, ICAO-free EASA texts). Reuse would need written permission from the copyright holder (owner action).
+
+Follow-up (same day): the owner chose to write original replacements. 120 EASA PPL(A) questions (+1 v2) were authored without reading TAFA question wording beyond the page dumps needed to register and map the source. Only topic keyword counts per subject were taken from the extraction. See `reports/progress.md` batch 18.
+
+## Source registered and restricted: "PPL(A) Question Bank, English" / questionbank10.pdf (2026-10-05)
+
+The user supplied `/Users/sam/pilots_quest/books/PPL/questionbank10.pdf` (358 pages; copied to `inbox/`, git-ignored). It is registered as `SRC-QB10-PPLA-2019` with rights record `RR-QB10-PPLA-2019` (unconfirmed, pending). It is an individually compiled bank: the PDF author field is a personal name, it was created 2019 and modified 2022 with a Turkish Word toolchain, and it has no copyright notice, licence or answer key. It contains about 2,157 items across subjects 010-090, including internal duplicates, and its wording follows commercial UK textbook review questions. **Restricted under guide §7.** I did not extract it beyond reading the first pages and section headings, and imported 0 records.

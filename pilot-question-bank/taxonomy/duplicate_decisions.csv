@@ -1,0 +1,12 @@
+question_id_a,question_id_b,decision,reviewer,review_date,notes
+FAA-PAR-PPM-000448,FAA-PAR-PPM-000452,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"different airspace class (B vs C), different answer"
+TC-GPL-AL-000001,TC-RPPPPLA-AL-000008,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"same official sample item published in two licences' sample exams; each kept on its own track, not merged"
+TC-GPL-REG-000010,TC-RPPPPLA-AL-000017,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"same official sample item published in two licences' sample exams; each kept on its own track, not merged"
+TC-GPL-REG-000016,TC-RPPPPLA-AL-000003,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"same official sample item published in two licences' sample exams; each kept on its own track, not merged"
+TC-GPL-REG-000016,TC-ULPP-REG-000010,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"same official sample item published in two licences' sample exams; each kept on its own track, not merged"
+TC-RPPPPLA-AL-000003,TC-ULPP-REG-000010,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"same official sample item published in two licences' sample exams; each kept on its own track, not merged"
+TC-RPPPPLA-AL-000013,TC-ULPP-REG-000006,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"same official sample item published in two licences' sample exams; each kept on its own track, not merged"
+EASA-ATPLA-NAV-000162,EASA-ATPLA-NAV-000168,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"numeric drill variant: different chart scale, different answer"
+EASA-ATPLA-NAV-000163,EASA-ATPLA-NAV-000170,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"numeric drill variant: different chart scale, different answer"
+EASA-ATPLA-NAV-000169,EASA-ATPLA-NAV-000174,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"numeric drill variant: different chart scale, different answer"
+FAA-PAR-PERF-000044,FAA-PRH-PERF-000034,distinct,claude-opus-5-5 (AI first-pass),2026-10-05,"same official sample item published in two licences' sample exams; each kept on its own track, not merged"

@@ -14,7 +14,7 @@ rules in taxonomy/ instead and re-run categorize.py):
   track_id               "<AUTHORITY>:<LICENCE>" key the app uses
   licence_level          recreational|private|commercial|airline_transport|instructor|remote_pilot
   aircraft_class         aeroplane|helicopter|glider|ultralight|uas
-  applicable_licences    list of track_ids this question is valid for
+  applicable_licences    own track + reviewer-approved mappings only
   chapter_title          backfilled from subject when the source had none
   question_style         exam_style | concept_recall
   quality_flags          list of open quality issues (empty = clean)
@@ -79,6 +79,9 @@ _LIC = _load_json("licences.json")
 SUBJECT_RULES = _load_csv("subject_rules.csv")
 TOPIC_OVERRIDES = {r["question_id"]: r["topic"] for r in _load_csv("topic_overrides.csv")}
 APPLICABILITY = _load_csv("applicability.csv")
+STYLE_OVERRIDES = ({r["question_id"]: r["question_style"] for r in _load_csv("style_overrides.csv")}
+                   if os.path.exists(os.path.join(TAX, "style_overrides.csv")) else {})
+POLICY = _load_json("policy.json")
 AUDIT_FLAGS = {}
 if os.path.exists(os.path.join(TAX, "review_flags.csv")):
     for r in _load_csv("review_flags.csv"):
@@ -146,24 +149,40 @@ def fix_acs_area_label(q):
 
 
 def applicable_licences(q, info):
+    """Own track, plus only documented mappings approved by a reviewer.
+
+    Guide rules 5-6 / section 9: applicability is never inferred from broad
+    rules, never crosses authorities automatically, and Air Law is never
+    shared without an approved, LO-level mapping in taxonomy/applicability.csv.
+    """
     tracks = [info["track_id"]]
-    tags = set(q.get("tags") or [])
-    if info["track_id"] == "EASA:ATPL(A)" and q.get("subject_code") in ("010", "021", "061", "062"):
-        # CPL(A) examines the same subjects with a subset of the ATPL LOs.
-        tracks.append("EASA:CPL(A)")
-        if "ppl-applicable" in tags or "piston_engine" in tags:
-            tracks.append("EASA:PPL(A)")
     for rule in APPLICABILITY:
+        if rule.get("review_status") != "approved" or not rule.get("reviewer"):
+            continue
+        if rule["add_track"].split(":")[0] != info["track_id"].split(":")[0]:
+            continue  # never widen across authorities
         if rule["from_track"] == info["track_id"] and rule["subject_code"] == q.get("subject_code") \
                 and rule["chapter_title"] == q.get("chapter_title") and rule["add_track"] not in tracks:
             tracks.append(rule["add_track"])
-    for extra in q.get("extra_applicable_licences") or []:
-        if extra not in tracks:
-            tracks.append(extra)
     return tracks
 
 
+def regulation_dependent(q):
+    if q.get("topic") in POLICY["regulation_dependent_topics"]:
+        return True
+    ref = re.sub(POLICY.get("syllabus_citation_regex", r"$^"), "", q.get("regulation_reference") or "")
+    return bool(re.search(POLICY["regulation_citation_regex"], ref))
+
+
+def needs_second_check(q):
+    rule = POLICY["second_check_required_for"]
+    return (q.get("question_type") in rule["question_types"] or q.get("topic") in rule["topics"]
+            or bool(q.get("calculation_steps")) or (rule["regulation_dependent"] and regulation_dependent(q)))
+
+
 def question_style(q):
+    if q.get("question_id") in STYLE_OVERRIDES:
+        return STYLE_OVERRIDES[q["question_id"]]
     if q.get("question_style") in ("exam_style", "concept_recall"):
         return q["question_style"]
     if CONCEPT_RECALL_PATTERN.match(q.get("question_text", "")) and \
@@ -185,8 +204,6 @@ def quality_flags(q, style):
     if re.search(r"non-?commercial", q.get("copyright_status", ""), re.I):
         # e.g. Transport Canada TP 13014 / TP 14454 Crown copyright terms.
         flags.add("non_commercial_licence")
-    if q.get("status") == "quarantined":
-        flags.add("quarantined")
     if q.get("question_type") == "calculation" and not q.get("calculation_steps"):
         flags.add("missing_calculation_steps")
     return sorted(flags)
@@ -218,18 +235,58 @@ def categorize(q):
 
 
 def is_usable(q):
-    return (q.get("provenance") in USABLE_PROVENANCE and q.get("reuse_allowed") is True
-            and q.get("status") == "active")
+    """Usable = passed the full activation gate (status is computed by scripts/gates.py)."""
+    return q.get("status") == "active" and q.get("provenance") in USABLE_PROVENANCE
+
+
+STORE_DIRS = ("data", "quarantine")
 
 
 def load_bank(data_dir=None):
-    """Yield (path, records) for every JSONL file under data/."""
+    """Yield (path, records) for every JSONL file under data/ and quarantine/.
+
+    data/ holds active (released) records; quarantine/ holds everything that
+    has not passed the activation gate. Both mirror the same relative layout
+    (<authority>/<licence>/[<subject>/]<lang>/<file>.jsonl).
+    """
     import glob
-    data_dir = data_dir or os.path.join(ROOT, "data")
-    for path in sorted(glob.glob(os.path.join(data_dir, "**", "*.jsonl"), recursive=True)):
-        with open(path, encoding="utf-8") as f:
-            recs = [json.loads(line) for line in f if line.strip()]
-        yield path, recs
+    dirs = [data_dir] if data_dir else [os.path.join(ROOT, d) for d in STORE_DIRS]
+    for d in dirs:
+        for path in sorted(glob.glob(os.path.join(d, "**", "*.jsonl"), recursive=True)):
+            with open(path, encoding="utf-8") as f:
+                recs = [json.loads(line) for line in f if line.strip()]
+            yield path, recs
+
+
+def rel_path(path):
+    """data/x/y.jsonl or quarantine/x/y.jsonl -> x/y.jsonl"""
+    rel = os.path.relpath(path, ROOT).split(os.sep)
+    return os.sep.join(rel[1:]) if rel[0] in STORE_DIRS else os.sep.join(rel)
+
+
+def load_logical_files():
+    """{relative file: [records from data/ and quarantine/, original order by question_id]}"""
+    files = {}
+    for path, recs in load_bank():
+        for q in recs:
+            q["_source_file"] = path
+        files.setdefault(rel_path(path), []).extend(recs)
+    for recs in files.values():
+        recs.sort(key=lambda q: q["question_id"])
+    return files
+
+
+def place(files):
+    """Write each logical file's records to data/ (active) or quarantine/ (everything else)."""
+    for rel, recs in files.items():
+        for d in STORE_DIRS:
+            subset = [q for q in recs if (q.get("status") == "active") == (d == "data")]
+            path = os.path.join(ROOT, d, rel)
+            if subset:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                write_jsonl(path, subset)
+            elif os.path.exists(path):
+                os.remove(path)
 
 
 def write_jsonl(path, records):

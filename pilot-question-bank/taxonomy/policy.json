@@ -1,0 +1,60 @@
+{
+  "_doc": "Publication policy used by scripts/gates.py. Source: PilotQuest_Strict_PDF_Ingestion_and_Publishing_Guide.md. Change only with an owner decision and log it in reports/progress.md.",
+  "platform_commercial": true,
+  "platform_commercial_rationale": "PilotQuest reels promote the app; guide section 8 treats promotion of a commercial product as commercial use. Set false only if the owner documents a non-commercial platform.",
+  "answer_match_min_confidence": 0.95,
+  "extraction_min_confidence": 0.95,
+  "second_check_required_for": {
+    "question_types": [
+      "calculation"
+    ],
+    "topics": [
+      "OPERATIONAL_PROCEDURES"
+    ],
+    "regulation_dependent": true,
+    "_doc": "Guide section 10: safety-critical, regulatory and multi-step calculation questions need a second independent check. Operational procedures (emergencies, wake, wind shear technique) are treated as safety-critical."
+  },
+  "regulation_dependent_topics": [
+    "AIR_LAW",
+    "COMMUNICATIONS"
+  ],
+  "regulation_citation_regex": "\\b14 CFR\\b|\\b(61|91|107|119|135)\\.\\d|\\bCARs?\\b|\\bSERA\\.\\d|Part-(NCO|ORO|MED)|\\bFCL\\.(?!025)\\d|Regulation \\(EU\\)|\\bAnnex \\d|PANS-|Doc 4444|Doc 8168",
+  "blocking_quality_flags": [
+    "audit_v2_pending_provision_review",
+    "needs_figure",
+    "missing_calculation_steps",
+    "extraction_uncertain",
+    "shuffle_check_option_references"
+  ],
+  "exam_only_blocking_flags": [
+    "templated_distractors"
+  ],
+  "regulatory_currency_max_age_days": 365,
+  "regulation_citation_regex_doc": "Citations of the syllabus itself (Appendix 1 to FCL.025, Part-FCL as the syllabus basis) do not make a question regulation-dependent.",
+  "study_tier": {
+    "_doc": "Owner decision 2026-10-05: PilotQuest is study & practice material, not a guarantee of exam content. A record may be published in the 'study' tier when it passes every correctness, legal and media gate but not yet the process gates below. Student views label it as practice material; regulation-dependent items carry a 'check current rules' notice.",
+    "enabled": true,
+    "relaxed_gates": [
+      "objective",
+      "second_check"
+    ],
+    "classification_optional_fields": [
+      "syllabus_version"
+    ],
+    "regulatory_statuses_allowed": [
+      "current_verified",
+      "current_pending_second_review"
+    ],
+    "nonblocking_hold_reason_substrings": [
+      "SACAA syllabus citation conflict",
+      "CAP 1298 (2015) currency",
+      "regulation paragraph citations not independently re-verified",
+      "judgment-based ADM scenario"
+    ],
+    "reels_allow_regulation_dependent": false,
+    "study_notice": "Study and practice material. These are not official or live exam questions and do not guarantee exam content or results.",
+    "regulatory_notice": "Rules change and differ by State. Check the current regulation before relying on this answer.",
+    "_rights_unchanged": "Rights, technical review (one defensible answer), editorial review, media and duplicate gates are never relaxed."
+  },
+  "syllabus_citation_regex": "SA-CATS 61 Appendix[^;]*|Civil Aviation Regulations \\(CAR\\) Part 61|CAP 1298[^;]*|Appendix 1 to FCL\\.025"
+}

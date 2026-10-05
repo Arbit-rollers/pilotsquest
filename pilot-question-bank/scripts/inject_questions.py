@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """
-inject_questions.py — Bring a new batch of questions into the bank.
+inject_questions.py — Import a structured batch (JSONL/CSV) into QUARANTINE.
 
-    python3 scripts/inject_questions.py inbox/my_batch.jsonl [--defaults inbox/my_batch.defaults.json]
-    python3 scripts/inject_questions.py inbox/my_batch.jsonl --apply \
-        --provenance-reviewed "read 20 answers across ch1-12; no textbook text"
+    python3 scripts/inject_questions.py inbox/batch.jsonl --defaults inbox/batch.defaults.json   # dry run
+    python3 scripts/inject_questions.py inbox/batch.jsonl --defaults ... --apply \
+        --provenance-reviewed "what you read in the intake sample"
 
-Without --apply nothing is written: you get a full dry-run report.
-See "question injection.md" at the bank root for the complete workflow.
+Nothing this script does can make a record active. Every imported record
+lands in quarantine/ with every review status `pending`; publication happens
+only through scripts/release_questions.py, which recomputes the per-record
+gate (PilotQuest_Strict_PDF_Ingestion_and_Publishing_Guide.md, sections 15-17).
 
-Pipeline (each stage can stop the run):
-  1. load      JSONL or CSV (schemas/import_template.csv columns); common
-               foreign field names are mapped (stem/options/correct_option_index …)
-  2. defaults  --defaults JSON fills fields missing on every record
-  3. screen    red-flag scan (textbook names, page cites, OCR junk) + a random
-               answer sample you must read; --apply needs --provenance-reviewed
-  4. ids       AUTHORITY-LICENCE-SUBJECT-NNNNNN, continuing the bank's max
-  5. shuffle   rebalance correct-answer letters if the batch is skewed
-  6. classify  taxonomy.categorize (topic, track, applicability, flags)
-  7. dedupe    exact + near-duplicate check vs bank and within batch
-  8. validate  the same checks as validate_questions.py
-  9. route     data/<authority>/<licence>/[<subject>/]<lang>/<provenance>_batch<N>.jsonl
- 10. publish   write, rebuild views/, log to reports/injection_log.csv,
-               move the inbox file to inbox/processed/
+Pipeline:
+  1. load       JSONL or CSV (schemas/import_template.csv); foreign field names mapped
+  2. defaults   --defaults JSON fills missing fields on every record
+  3. screen     red-flag scan + random intake sample (an intake check only — rule 3)
+  4. ids        AUTHORITY-LICENCE-SUBJECT-NNNNNN continuing the bank's max
+  5. originals  original wording/choices/answer preserved before anything else changes
+  6. shuffle    ONLY with --shuffle (imbalance is a signal, not proof — section 14)
+  7. classify   taxonomy.categorize
+  8. dedupe     layered (scripts/dedupe.py) vs bank and within batch
+  9. validate   schema + structural checks; unknown fields kept in source_payload
+ 10. route      quarantine/<authority>/<licence>/[<subject>/]<lang>/<provenance>_batch<N>.jsonl
+ 11. record     injection_log.csv, audit_log.jsonl, inbox -> inbox/processed, gates recomputed
 """
 import argparse
 import csv
@@ -40,7 +40,7 @@ from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import taxonomy  # noqa: E402
-from detect_duplicates import normalize, shingles, jaccard  # noqa: E402
+import dedupe  # noqa: E402
 from validate_questions import validate_record  # noqa: E402
 
 ROOT = taxonomy.ROOT
@@ -144,6 +144,25 @@ def bank_index():
     return recs
 
 
+AUDIT_DEFAULTS = {
+    "extraction_method": "manual", "extraction_confidence": None, "ocr_uncertainties": [],
+    "answer_match_confidence": None, "source_has_answer_key": False, "regulatory_status": "",
+    "technical_review_status": "pending", "second_check_status": "pending", "editorial_review_status": "pending",
+    "regulatory_review_status": "pending", "media_review_status": "not_required", "duplicate_review_status": "pending",
+    "source_effective_date": "", "source_accessed_date": "", "regulation_provision": "",
+    "question_version": 1, "supersedes_question_id": "", "superseded_by_question_id": "",
+    "image_required": False, "hold_reasons": [], "status": "quarantined",
+}
+
+
+def preserve_originals(r):
+    """Section 5/7/14: keep exactly what the source said before any change."""
+    r.setdefault("original_question_text", r.get("question_text", ""))
+    r.setdefault("original_choices", [c.get("text") for c in r.get("choices", [])])
+    r.setdefault("original_stated_answer", r.get("correct_answer", ""))
+    r.setdefault("original_explanation", r.get("explanation", ""))
+
+
 def id_prefix_for(r, bank, override):
     if override:
         return override.rstrip("-")
@@ -182,6 +201,12 @@ def maybe_shuffle(records):
     top_share = dist.most_common(1)[0][1] / len(mc)
     if len(mc) < 8 or top_share <= 0.40:
         return None
+    return {"imbalance": dict(dist)}
+
+
+def shuffle(records):
+    mc = [r for r in records if r.get("question_type") == "single_choice" and len(r.get("choices", [])) >= 3]
+    dist = Counter(r["correct_answer"] for r in mc)
     for r in mc:
         old = {c["label"]: c["text"] for c in r["choices"]}
         texts = [old[L] for L in sorted(old)]
@@ -195,56 +220,39 @@ def maybe_shuffle(records):
         r["correct_answer"] = LABELS[pos]
         r["incorrect_answer_explanations"] = {new_label[k]: v for k, v in
                                               (r.get("incorrect_answer_explanations") or {}).items() if k in new_label}
+        r["shuffle_algorithm"] = "md5(question_id) mod n -> correct-answer position; v1"
+        r["shuffle_seed"] = r["question_id"]
+        if re.search(r"\b(above|below|all of the|none of the|both of the)\b", " ".join(texts), re.I):
+            r.setdefault("quality_flags_import", []).append("shuffle_check_option_references")
     return dict(dist)
-
-
-# -------------------------------------------------------------- 7. dedupe ----
-def find_duplicates(records, bank, threshold):
-    pool = defaultdict(list)
-    for q in bank:
-        n = normalize(q["question_text"])
-        pool[(q.get("track_id"), q.get("topic"))].append((q["question_id"], n, shingles(n)))
-    dups = []
-    for r in records:
-        n = normalize(r["question_text"])
-        sh = shingles(n)
-        key = (r.get("track_id"), r.get("topic"))
-        for qid, n2, sh2 in pool[key]:
-            score = 1.0 if n == n2 else jaccard(sh, sh2)
-            if score >= threshold:
-                dups.append((r["question_id"], qid, round(score, 2)))
-                break
-        pool[key].append((r["question_id"], n, sh))
-    return dups
 
 
 # --------------------------------------------------------------- 9. route ----
 def route(r, bank, target_dir):
+    """Return the logical directory (relative to data/ and quarantine/) for a record."""
     if target_dir:
-        d = os.path.join(ROOT, target_dir)
-    else:
-        same_subject = [q["_source_file"] for q in bank if q.get("track_id") == r["track_id"]
-                        and q.get("subject_code") == r.get("subject_code")]
-        same_track = [q["_source_file"] for q in bank if q.get("track_id") == r["track_id"]]
-        if same_subject:
-            d = os.path.dirname(Counter(same_subject).most_common(1)[0][0])
-        elif same_track:
-            track_dir = os.path.dirname(Counter(same_track).most_common(1)[0][0])
-            rel = os.path.relpath(track_dir, os.path.join(ROOT, "data")).split(os.sep)
-            if len(rel) == 3:  # data/<authority>/<licence>/<lang> (FAA layout: no subject folder)
-                d = track_dir
-            else:              # data/<authority>/<licence>/<subject>/<lang>
-                subj = re.sub(r"[^a-z0-9]+", "-", r["subject"].lower()).strip("-")
-                d = os.path.join(ROOT, "data", rel[0], rel[1], subj, r.get("language", "en"))
-        else:
-            raise SystemExit(f"{r['question_id']}: no folder exists yet for track {r['track_id']}; "
-                             f"pass --target-dir data/<authority>/<licence>/<subject>/<lang>")
-    return d
+        return target_dir.split("/", 1)[1] if target_dir.startswith(("data/", "quarantine/")) else target_dir
+    rel_of = lambda q: os.path.dirname(taxonomy.rel_path(q["_source_file"]))
+    same_subject = [rel_of(q) for q in bank if q.get("track_id") == r["track_id"]
+                    and q.get("subject_code") == r.get("subject_code")]
+    same_track = [rel_of(q) for q in bank if q.get("track_id") == r["track_id"]]
+    if same_subject:
+        return Counter(same_subject).most_common(1)[0][0]
+    if same_track:
+        parts = Counter(same_track).most_common(1)[0][0].split(os.sep)
+        if len(parts) == 3:  # <authority>/<licence>/<lang> (FAA layout: no subject folder)
+            return os.sep.join(parts)
+        subj = re.sub(r"[^a-z0-9]+", "-", r["subject"].lower()).strip("-")
+        return os.path.join(parts[0], parts[1], subj, r.get("language", "en"))
+    raise SystemExit(f"{r['question_id']}: no folder exists yet for track {r['track_id']}; "
+                     f"pass --target-dir <authority>/<licence>/<subject>/<lang>")
 
 
 def batch_file(directory, provenance, label, planned):
-    existing = glob.glob(os.path.join(directory, f"{provenance}_batch*.jsonl")) + \
-        [p for p in planned if os.path.dirname(p) == directory and os.path.basename(p).startswith(provenance)]
+    existing = []
+    for store in taxonomy.STORE_DIRS:
+        existing += glob.glob(os.path.join(ROOT, store, directory, f"{provenance}_batch*.jsonl"))
+    existing += [p for p in planned if os.path.dirname(p) == directory and os.path.basename(p).startswith(provenance)]
     nums = [int(m.group(1)) for p in existing if (m := re.search(r"_batch(\d+)", os.path.basename(p)))]
     n = max(nums, default=0) + 1
     suffix = f"_{re.sub(r'[^a-z0-9]+', '_', label.lower()).strip('_')}" if label else ""
@@ -259,14 +267,16 @@ def main():
     ap.add_argument("--apply", action="store_true", help="write to data/ (default: dry run)")
     ap.add_argument("--provenance-reviewed", metavar="NOTE",
                     help="required with --apply: what you checked in the answer sample")
-    ap.add_argument("--activate", action="store_true",
-                    help="set status=active on records that pass every check (default: quarantined)")
+    ap.add_argument("--shuffle", action="store_true",
+                    help="rebalance correct-answer letters (only after verification; records algorithm + seed)")
+    ap.add_argument("--source-id", help="registered source_id (sources/source_manifest.json) for every record")
+    ap.add_argument("--rights-record", help="rights_record_id (taxonomy/rights_records.csv) for every record")
     ap.add_argument("--id-prefix", help="e.g. EASA-ATPLA-MET when the subject is new to the bank")
     ap.add_argument("--target-dir", help="override routing, relative to the bank root")
     ap.add_argument("--label", default="", help="short batch label for the file name, e.g. 'icing'")
-    ap.add_argument("--allow-red-flags", action="store_true")
-    ap.add_argument("--allow-duplicates", action="store_true")
-    ap.add_argument("--dup-threshold", type=float, default=0.85)
+    ap.add_argument("--allow-red-flags", action="store_true",
+                    help="import flagged records anyway — into quarantine only, flagged; never into an active view")
+    ap.add_argument("--allow-duplicates", action="store_true", help="import duplicates into quarantine for review")
     ap.add_argument("--sample", type=int, default=15)
     args = ap.parse_args()
 
@@ -291,28 +301,57 @@ def main():
                      r.get("correct_answer"))
         print(f"  #{i + 1} Q: {r.get('question_text', '')[:110]}\n       A: {str(right)[:110]}")
 
-    # 4-6. ids, shuffle, classify
+    # 4-7. ids, originals, (shuffle), classify
     bank = bank_index()
+    manifest_path = os.path.join(ROOT, "sources", "source_manifest.json")
+    manifest = json.load(open(manifest_path, encoding="utf-8")) if os.path.exists(manifest_path) else {}
+    rights_ids = {row["rights_record_id"] for row in csv.DictReader(open(os.path.join(ROOT, "taxonomy", "rights_records.csv")))}
     assign_ids(records, bank, args.id_prefix)
-    skew = maybe_shuffle(records)
-    if skew:
-        print(f"\nCorrect-answer letters were skewed {skew}; reshuffled deterministically.")
     errors = []
+    for r in records:
+        preserve_originals(r)
+        r["reuse_allowed"] = False     # rule 4: derived from the rights record by gates.py, never trusted from import
+        r["verified"] = False          # derived from review statuses by gates.py
+        for k, v in AUDIT_DEFAULTS.items():
+            r.setdefault(k, v)
+        r["status"] = "quarantined"     # rules 2 & 15: nothing is imported active
+        if args.source_id:
+            r["source_id"] = args.source_id
+        if args.rights_record:
+            r["rights_record_id"] = args.rights_record
+        if r.get("source_id") not in manifest:
+            errors.append(f"{r['question_id']}: source_id '{r.get('source_id')}' not registered in sources/source_manifest.json")
+        if r.get("rights_record_id") not in rights_ids:
+            errors.append(f"{r['question_id']}: rights_record_id '{r.get('rights_record_id')}' not in taxonomy/rights_records.csv")
+        if hits and any(i == records.index(r) for i, _ in hits):
+            r.setdefault("hold_reasons", []).append("intake red flag — provenance/copyright check required")
+    imbalance = maybe_shuffle(records)
+    if imbalance:
+        print(f"\nAnswer-letter imbalance {imbalance['imbalance']} (reporting signal only).")
+        if args.shuffle:
+            shuffle(records)
+            print("  --shuffle given: reshuffled deterministically; algorithm + seed recorded per record.")
     for i, r in enumerate(records):
         r["_source_file"] = ""
-        if r.get("status") not in ("active", "quarantined", "archived", "rejected"):
-            r["status"] = "quarantined"
         try:
             records[i] = taxonomy.categorize(r)
         except taxonomy.CategorizationError as e:
             errors.append(str(e))
+        for extra in records[i].pop("quality_flags_import", []):
+            records[i]["quality_flags"] = sorted(set(records[i]["quality_flags"]) | {extra})
 
-    # 7. dedupe
-    dups = [] if errors else find_duplicates(records, bank, args.dup_threshold)
+    # 8. dedupe (layered, vs bank and within batch)
+    dups = []
+    if not errors:
+        new_ids = {r["question_id"] for r in records}
+        for p in dedupe.find_pairs(bank + records):
+            if p["layer"] != "template" and (p["question_id_a"] in new_ids or p["question_id_b"] in new_ids):
+                dups.append(p)
     if dups:
         print(f"\nDUPLICATES ({len(dups)}):")
-        for new, old, s in dups:
-            print(f"  {new} ~ {old} (similarity {s})")
+        for p in dups:
+            print(f"  {p['question_id_a']} ~ {p['question_id_b']} ({p['layer']} {p['score']}, {p['scope']})")
+    dup_ids = {p[k] for p in dups for k in ("question_id_a", "question_id_b")} & {r["question_id"] for r in records}
 
     # 8. validate
     with open(os.path.join(ROOT, "schemas", "question.schema.json"), encoding="utf-8") as f:
@@ -327,26 +366,23 @@ def main():
             errors.append(f"{r['question_id']}: short_answer — write 3 distractors first (the app serves multiple choice)")
 
     allowed = set(schema["properties"])
-    dropped = Counter(k for r in records for k in r if k not in allowed and not k.startswith("_"))
-    if dropped:
-        print(f"\nDropping fields not in the schema: {dict(dropped)}")
-        records = [{k: v for k, v in r.items() if k in allowed or k.startswith("_")} for r in records]
-
-    dup_ids = {d[0] for d in dups}
-    if args.activate:
+    unknown = Counter(k for r in records for k in r if k not in allowed and not k.startswith("_"))
+    if unknown:
+        print(f"\nUnknown fields preserved in source_payload (map them deliberately later): {dict(unknown)}")
         for r in records:
-            if r["question_id"] not in dup_ids and r["provenance"] in taxonomy.USABLE_PROVENANCE \
-                    and r.get("reuse_allowed") and not ({"needs_figure", "missing_calculation_steps"} & set(r["quality_flags"])):
-                r["status"] = "active"
-                r["quality_flags"] = [f for f in r["quality_flags"] if f != "quarantined"]
+            extra = {k: r.pop(k) for k in list(r) if k not in allowed and not k.startswith("_")}
+            if extra:
+                r["source_payload"] = {**r.get("source_payload", {}), **extra}
 
     # 9. route
     plan = defaultdict(list)
     if not errors:
         planned = []
         for r in records:
-            if r["question_id"] in dup_ids and not args.allow_duplicates:
-                continue
+            if r["question_id"] in dup_ids:
+                if not args.allow_duplicates:
+                    continue
+                r["duplicate_review_status"] = "pending"
             d = route(r, bank, args.target_dir)
             key = (d, r["provenance"])
             if key not in {(os.path.dirname(p), pv) for p, pv in planned}:
@@ -360,24 +396,25 @@ def main():
     print(f"  status:  {dict(Counter(r.get('status') for r in records))}")
     print(f"  flags:   {dict(Counter(f for r in records for f in r.get('quality_flags', [])))}")
     for path, rs in plan.items():
-        print(f"  -> {os.path.relpath(path, ROOT)}: {len(rs)} ({rs[0]['question_id']} … {rs[-1]['question_id']})")
+        print(f"  -> quarantine/{path}: {len(rs)} ({rs[0]['question_id']} … {rs[-1]['question_id']})")
     for e in errors:
         print("ERROR", e)
 
-    blocked = bool(errors) or (hits and not args.allow_red_flags) or (dups and not args.allow_duplicates)
+    blocked = bool(errors) or (bool(hits) and not args.allow_red_flags) or (bool(dups) and not args.allow_duplicates)
     if not args.apply:
         print("\nDry run only." + (" Fix the problems above first." if blocked else
                                   " Re-run with --apply --provenance-reviewed \"<what you checked>\"."))
         sys.exit(1 if errors else 0)
     if blocked:
-        sys.exit("\nNot applied: resolve errors / red flags / duplicates (or pass the matching --allow-* flag).")
+        sys.exit("\nNot applied: resolve errors / red flags / duplicates (--allow-* imports into quarantine only).")
     if not args.provenance_reviewed:
         sys.exit("\nNot applied: --provenance-reviewed \"<what you checked in the answer sample>\" is required.")
 
-    # 10. publish
+    # 10-11. write to quarantine/, log, recompute gates
     for path, rs in plan.items():
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        taxonomy.write_jsonl(path, rs)
+        full = os.path.join(ROOT, "quarantine", path)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        taxonomy.write_jsonl(full, rs)
     log = os.path.join(ROOT, "reports", "injection_log.csv")
     new_log = not os.path.exists(log)
     with open(log, "a", newline="", encoding="utf-8") as f:
@@ -386,21 +423,24 @@ def main():
             w.writerow(["date", "inbox_file", "target_file", "count", "first_id", "last_id",
                         "status_counts", "provenance_review_note"])
         for path, rs in plan.items():
-            w.writerow([TODAY, os.path.basename(args.batch), os.path.relpath(path, ROOT), len(rs),
+            w.writerow([TODAY, os.path.basename(args.batch), "quarantine/" + path, len(rs),
                         rs[0]["question_id"], rs[-1]["question_id"],
                         json.dumps(dict(Counter(r["status"] for r in rs))), args.provenance_reviewed])
+    with open(os.path.join(ROOT, "reports", "audit_log.jsonl"), "a", encoding="utf-8") as f:
+        for path, rs in plan.items():
+            for r in rs:
+                f.write(json.dumps({"date": TODAY, "question_id": r["question_id"], "process": "inject_questions.py",
+                                    "from_status": None, "to_status": "quarantined", "pipeline_state": "received",
+                                    "evidence": {"inbox_file": os.path.basename(args.batch),
+                                                 "intake_note": args.provenance_reviewed}}, ensure_ascii=False) + "\n")
     done = os.path.join(ROOT, "inbox", "processed")
     os.makedirs(done, exist_ok=True)
     for p in [args.batch] + ([args.defaults] if args.defaults else []):
         if os.path.abspath(p).startswith(os.path.join(ROOT, "inbox")):
             shutil.move(p, os.path.join(done, f"{TODAY}_{os.path.basename(p)}"))
-    print("\nWritten. Rebuilding views …")
-    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "validate_questions.py"),
-                    os.path.join(ROOT, "data", "**", "*.jsonl"),
-                    "--schema", os.path.join(ROOT, "schemas", "question.schema.json")], check=True)
-    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "build_views.py")], check=True,
-                   stdout=subprocess.DEVNULL)
-    print("Views rebuilt. Add a batch entry to reports/progress.md.")
+    print("\nImported into quarantine/. Recomputing gates and views …")
+    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "release_questions.py")], check=True)
+    print("Next: review records and release them with scripts/release_questions.py --approval-file reviews/<file>.csv")
 
 
 if __name__ == "__main__":

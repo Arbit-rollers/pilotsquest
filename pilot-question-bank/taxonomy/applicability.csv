@@ -1,20 +1,34 @@
-from_track,subject_code,chapter_title,add_track,note
-EASA:ATPL(A),010,International Aviation Law and the Chicago Convention,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Flight Crew Licensing,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Aircraft Registration and Markings,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Airworthiness of Aircraft,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Rules of the Air,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Signals,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Altimeter Setting Procedures,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Aeronautical Information Service,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Air Traffic Services and Airspace,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Flight Information Service,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Aerodrome Control Service,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Secondary Surveillance Radar,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Alerting Service,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Search and Rescue,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Aerodromes,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Aviation Security,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Aircraft Accident Investigation,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Abbreviations and Definitions,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
-EASA:ATPL(A),010,Aerodrome Lighting Systems,EASA:PPL(A),in the EASA PPL(A) Air Law syllabus (AMC1 FCL.115/120) at basic depth
+from_track,subject_code,chapter_title,add_track,scope,syllabus_version,rationale,reviewer,review_status
+EASA:ATPL(A),010,International Aviation Law and the Chicago Convention,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Flight Crew Licensing,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Aircraft Registration and Markings,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Airworthiness of Aircraft,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Rules of the Air,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Signals,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Altimeter Setting Procedures,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Aeronautical Information Service,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Air Traffic Services and Airspace,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Flight Information Service,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Aerodrome Control Service,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Secondary Surveillance Radar,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Alerting Service,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Search and Rescue,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Aerodromes,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Aviation Security,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Aircraft Accident Investigation,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Abbreviations and Definitions,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),010,Aerodrome Lighting Systems,EASA:PPL(A),basic-depth PPL(A) Air Law topic,EASA Part-FCL AMC1 FCL.115/120 (Nov 2025 EAR),chapter title appears in the PPL(A) Air Law syllabus; LO-level match NOT yet done,,pending
+EASA:ATPL(A),061,Fundamentals of Air Navigation,EASA:PPL(A),PPL(A) Navigation,EASA Part-FCL AMC1 FCL.115/120,source package licence_scope lists PPL(A)/CPL(A); LO-level match NOT yet done,,pending
+EASA:ATPL(A),061,Fundamentals of Air Navigation,EASA:CPL(A),CPL(A) 061,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending
+EASA:ATPL(A),061,Time,EASA:PPL(A),PPL(A) Navigation,EASA Part-FCL AMC1 FCL.115/120,source package licence_scope lists PPL(A)/CPL(A); LO-level match NOT yet done,,pending
+EASA:ATPL(A),061,Time,EASA:CPL(A),CPL(A) 061,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending
+EASA:ATPL(A),061,Charts and Publications,EASA:PPL(A),PPL(A) Navigation,EASA Part-FCL AMC1 FCL.115/120,source package licence_scope lists PPL(A)/CPL(A); LO-level match NOT yet done,,pending
+EASA:ATPL(A),061,Charts and Publications,EASA:CPL(A),CPL(A) 061,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending
+EASA:ATPL(A),061,Computations,EASA:PPL(A),PPL(A) Navigation,EASA Part-FCL AMC1 FCL.115/120,source package licence_scope lists PPL(A)/CPL(A); LO-level match NOT yet done,,pending
+EASA:ATPL(A),061,Computations,EASA:CPL(A),CPL(A) 061,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending
+EASA:ATPL(A),061,Visual Navigation Procedures,EASA:PPL(A),PPL(A) Navigation,EASA Part-FCL AMC1 FCL.115/120,source package licence_scope lists PPL(A)/CPL(A); LO-level match NOT yet done,,pending
+EASA:ATPL(A),061,Visual Navigation Procedures,EASA:CPL(A),CPL(A) 061,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending
+EASA:ATPL(A),062,NDB and ADF,EASA:CPL(A),CPL(A) 062,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending
+EASA:ATPL(A),062,VOR,EASA:CPL(A),CPL(A) 062,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending
+EASA:ATPL(A),062,DME,EASA:CPL(A),CPL(A) 062,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending
+EASA:ATPL(A),062,GPS Navigation,EASA:CPL(A),CPL(A) 062,Appendix 1 to FCL.025,source package licence_scope lists PPL(A)/CPL(A),,pending

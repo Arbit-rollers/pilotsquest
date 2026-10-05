@@ -9,7 +9,8 @@ Usage:
 
 Idempotent: run it after editing anything in taxonomy/ (rules, overrides,
 licences, review flags) and every record is re-derived from the same rules.
-Records are rewritten field-for-field otherwise unchanged; line order is kept.
+--write also re-runs scripts/release_questions.py so gate results, status and
+data/ vs quarantine/ placement stay consistent with the new categories.
 """
 import argparse
 import collections
@@ -53,7 +54,10 @@ def main():
         print("ERROR", e)
     print(f"{len(all_recs)} records; field changes: {dict(changed_recs)}")
     if args.write:
-        print(f"{changed_files} file(s) rewritten")
+        print(f"{changed_files} file(s) rewritten; recomputing gates …")
+        import subprocess
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                     "release_questions.py")], check=True)
 
     if args.report:
         m = collections.Counter((q.get("topic"), q.get("track_id")) for q in all_recs)

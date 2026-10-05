@@ -5,7 +5,8 @@
 
 # Local-only
 /.pilotquest-git-backup/
-/.claude/
+/.claude/*
+!/.claude/skills/
 .DS_Store
 __pycache__/
 *.pyc
@@ -17,3 +18,8 @@ __pycache__/
 /pilot-question-bank/data/reels/
 /pilot-question-bank/data/Claude outputs/
 /pilot-question-bank/export/
+
+# Strict pipeline: raw PDF extraction may contain copyrighted wording — never publish
+/pilot-question-bank/extracted/
+/pilot-question-bank/inbox/*.pdf
+/pilot-question-bank/sources/*.pdf

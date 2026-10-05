@@ -4,9 +4,9 @@ A comprehensive, syllabus-aligned study bank compiled from legally reusable offi
 
 **This is a study and training resource.** It does not claim to contain "all exam questions" for any authority, does not reproduce any confidential live examination item bank, and does not guarantee passing an examination. Where a resource is confidential or its reuse terms could not be confirmed, it is recorded as a source only — never scraped into the question bank.
 
-## Status: Batch 1 (research + scaffolding)
+## Status
 
-This is the first research/build batch. See `reports/progress.md` for exactly what has and has not been done, `reports/unresolved_issues.md` for open questions, and `research/coverage_report.csv` for per-authority/licence/subject coverage. No questions are yet marked `status: active` (usable) — the one seed batch created this session (EASA PPL(A) Air Law) is deliberately `quarantined` pending regulatory citation verification.
+Governed by `PilotQuest_Strict_PDF_Ingestion_and_Publishing_Guide.md` (since 2026-10-05). Every question is gated individually; only records that pass every gate live in `data/` and reach student views. Current counts: `reports/publishable_summary.md`. History: `reports/progress.md`.
 
 ## Structure
 
@@ -15,10 +15,14 @@ pilot-question-bank/
 ├── README.md                    — this file
 ├── research/                    — authority inventory, source register, copyright audit, coverage gaps
 ├── schemas/                     — SQL schema, JSON Schema for questions, CSV import template
-├── data/<authority>/            — MASTER question store, one JSONL file per authority/licence/subject/language/batch
-├── taxonomy/                    — categorization rules (study areas, licences, overrides, applicability, review flags)
-├── views/                       — GENERATED per-purpose outputs (app feed, exam/flashcard sets, reel candidates, review queue)
-├── inbox/                       — drop new batches here; see "question injection.md"
+├── sources/                     — source manifests (hash, edition, rights) — sources/source_manifest.json
+├── extracted/                   — raw PDF extraction (git-ignored; may contain copyrighted text)
+├── data/<authority>/            — ACTIVE records only (passed the per-record activation gate)
+├── quarantine/<authority>/      — every record not yet released, with gate_failures + next_action
+├── taxonomy/                    — categorization rules, rights records, publication policy, review decisions
+├── reviews/                     — review decision files applied by release_questions.py
+├── views/                       — GENERATED per-purpose outputs (app, study, reels, review queue)
+├── inbox/                       — drop new PDFs/batches here
 ├── reports/                     — progress, rejected sources, legal/provenance notes, unresolved issues
 └── scripts/                     — validation, duplicate-detection, and export tooling (Python 3, stdlib + optional jsonschema)
 ```
@@ -42,16 +46,17 @@ Only the first five classes may ever be marked `reuse_allowed = true`, and only 
 
 ```bash
 # Validate all JSONL question files
-python3 scripts/validate_questions.py "data/**/*.jsonl"
+python3 scripts/validate_questions.py "data/**/*.jsonl" "quarantine/**/*.jsonl"
 
 # Detect likely duplicate/near-duplicate questions
 python3 scripts/detect_duplicates.py "data/**/*.jsonl"
 
-# Re-derive categories and rebuild the per-purpose views (run after any change)
-python3 scripts/categorize.py --write && python3 scripts/build_views.py
-
-# Inject a new batch (dry run first; full guide in "question injection.md")
-python3 scripts/inject_questions.py inbox/<batch>.jsonl --defaults inbox/<batch>.defaults.json
+# Strict pipeline — see PilotQuest_Strict_PDF_Ingestion_and_Publishing_Guide.md and the /inject-questions skill
+python3 scripts/ingest_pdf.py inbox/X.pdf --register --source-id SRC-...   # then --extract, --to-batch
+python3 scripts/inject_questions.py inbox/B.jsonl --defaults inbox/B.defaults.json   # lands in quarantine/
+python3 scripts/release_questions.py --approval-file reviews/<file>.csv   # apply reviews, recompute gates
+python3 scripts/validate_questions.py "data/**/*.jsonl" "quarantine/**/*.jsonl"
+cat reports/publishable_summary.md
 
 # Export usable (active + reuse_allowed) questions to flat CSV
 python3 scripts/export_database.py --data-dir data --out-dir export
