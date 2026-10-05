@@ -1,0 +1,20 @@
+{
+  "_doc": "Cross-authority study areas. Every question gets exactly one `topic`. Modelled on the EASA/ICAO theoretical-knowledge subject split because it is the most granular widely-used scheme; FAA, Transport Canada, SACAA and UK CAA subjects all map onto it. The authority's own subject wording stays in `subject` - this is a navigation/study layer only, never a replacement for official terminology.",
+  "topics": [
+    {"id": "AIR_LAW",               "name": "Air Law & ATC Procedures",              "easa_ref": "010", "covers": "Licensing, rules of the air, airspace, ATS, aerodromes, signals, SSR codes, registration, airworthiness rules, security, accident reporting, drone regulations"},
+    {"id": "AGK_AIRFRAME_SYSTEMS",  "name": "Aircraft General Knowledge – Airframe & Systems", "easa_ref": "021", "covers": "Structures, flight controls, landing gear, hydraulics, electrics, fuel/oxygen/cabin systems"},
+    {"id": "AGK_POWERPLANT",        "name": "Aircraft General Knowledge – Powerplant", "easa_ref": "021", "covers": "Piston and turbine engines, ignition, carburation and carb ice, fuel, propellers"},
+    {"id": "INSTRUMENTS",           "name": "Instrumentation",                         "easa_ref": "022", "covers": "Pitot-static, gyro instruments, compass errors, EFIS, airspeed markings"},
+    {"id": "MASS_BALANCE",          "name": "Mass & Balance",                          "easa_ref": "031", "covers": "Weight, CG, loading, load shift"},
+    {"id": "PERFORMANCE",           "name": "Performance",                             "easa_ref": "032", "covers": "Density altitude, take-off/landing distance, climb, glide ratio"},
+    {"id": "FLIGHT_PLANNING",       "name": "Flight Planning & Monitoring",            "easa_ref": "033", "covers": "Cross-country planning, fuel planning, NOTAM/briefing sources, flight plans"},
+    {"id": "HUMAN_PERFORMANCE",     "name": "Human Performance & Limitations",         "easa_ref": "040", "covers": "Physiology, hypoxia, illusions, vision/scanning, alcohol, fatigue, ADM, hazardous attitudes, CRM, risk management"},
+    {"id": "METEOROLOGY",           "name": "Meteorology",                             "easa_ref": "050", "covers": "Atmosphere, stability, fronts, icing, thunderstorms, METAR/TAF/winds aloft, forecasts"},
+    {"id": "GENERAL_NAVIGATION",    "name": "General Navigation",                      "easa_ref": "061", "covers": "Earth, direction, time, charts, DR, wind triangle, 1-in-60, flight computer, pilotage"},
+    {"id": "RADIO_NAVIGATION",      "name": "Radio Navigation",                        "easa_ref": "062", "covers": "NDB/ADF, VOR, DME, GNSS/RAIM, radar"},
+    {"id": "OPERATIONAL_PROCEDURES","name": "Operational Procedures",                  "easa_ref": "070", "covers": "Wake turbulence, windshear, emergency procedures, contaminated runways, towing/launch ops, airmanship procedures"},
+    {"id": "PRINCIPLES_OF_FLIGHT",  "name": "Principles of Flight",                    "easa_ref": "080", "covers": "Lift/drag, stalls and spins, load factor, V-n, stability, ground effect, rotorcraft aerodynamics"},
+    {"id": "COMMUNICATIONS",        "name": "Communications",                          "easa_ref": "090", "covers": "Radiotelephony phraseology, radio procedures, communications failure"},
+    {"id": "INSTRUCTION",           "name": "Fundamentals of Instruction",             "easa_ref": null,  "covers": "Learning theory, teaching methods, ACS/test standards (instructor licences only)"}
+  ]
+}

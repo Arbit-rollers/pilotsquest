@@ -1,0 +1,21 @@
+{
+  "_doc": "Maps each authority's verbatim `licence` string to normalized fields. `track_id` is the stable key the app/learning map uses. `applicable_licences` defaults to [licence_code]; categorize.py widens it for content that is explicitly valid at other levels (see APPLICABILITY rules in scripts/taxonomy.py). Add a row here before injecting a question for a new licence.",
+  "licences": {
+    "PPL(A)":                       {"authority": "EASA",   "licence_code": "PPL(A)",  "licence_level": "private",           "aircraft_class": "aeroplane",  "track_id": "EASA:PPL(A)"},
+    "ATPL(A)":                      {"authority": "EASA",   "licence_code": "ATPL(A)", "licence_level": "airline_transport", "aircraft_class": "aeroplane",  "track_id": "EASA:ATPL(A)"},
+    "Private Pilot - Airplane (PAR)":            {"authority": "FAA", "licence_code": "PAR", "licence_level": "private",      "aircraft_class": "aeroplane",  "track_id": "FAA:PAR"},
+    "Commercial Pilot - Airplane (CAX)":         {"authority": "FAA", "licence_code": "CAX", "licence_level": "commercial",   "aircraft_class": "aeroplane",  "track_id": "FAA:CAX"},
+    "Flight Instructor - Airplane (FIA)":        {"authority": "FAA", "licence_code": "FIA", "licence_level": "instructor",   "aircraft_class": "aeroplane",  "track_id": "FAA:FIA"},
+    "Private Pilot - Helicopter (PRH)":          {"authority": "FAA", "licence_code": "PRH", "licence_level": "private",      "aircraft_class": "helicopter", "track_id": "FAA:PRH"},
+    "Remote Pilot Certificate - Small UAS (UAG)":{"authority": "FAA", "licence_code": "UAG", "licence_level": "remote_pilot", "aircraft_class": "uas",        "track_id": "FAA:UAG"},
+    "Recreational Pilot Permit / Private Pilot Licence (Aeroplane)": {"authority": "Transport Canada", "licence_code": "RPP/PPL(A)", "licence_level": "private", "aircraft_class": "aeroplane", "track_id": "TC:RPP-PPL(A)"},
+    "Glider Pilot Licence":                      {"authority": "Transport Canada", "licence_code": "GPL",  "licence_level": "private",      "aircraft_class": "glider",     "track_id": "TC:GPL"},
+    "Pilot Permit - Ultra-light Aeroplane":      {"authority": "Transport Canada", "licence_code": "ULPP", "licence_level": "recreational", "aircraft_class": "ultralight", "track_id": "TC:ULPP"},
+    "ATPL(A)/(H)":                               {"authority": "SACAA", "licence_code": "ATPL(A)/(H)", "licence_level": "airline_transport", "aircraft_class": "aeroplane", "track_id": "SACAA:ATPL"}
+  },
+  "_uk_caa_note": "UK CAA uses the string PPL(A) too; licences are therefore resolved by (authority, licence), see scripts/taxonomy.py",
+  "by_authority_override": {
+    "UK CAA|PPL(A)": {"authority": "UK CAA", "licence_code": "PPL(A)", "licence_level": "private", "aircraft_class": "aeroplane", "track_id": "UKCAA:PPL(A)"}
+  },
+  "level_order": ["recreational", "private", "commercial", "airline_transport", "instructor", "remote_pilot"]
+}

@@ -1,0 +1,57 @@
+authority,subject_code_regex,subject_regex,topic,note
+EASA,^010$,,AIR_LAW,EASA subject numbering
+EASA,^021$,Powerplant,AGK_POWERPLANT,
+EASA,^021$,,AGK_AIRFRAME_SYSTEMS,
+EASA,^022$,,INSTRUMENTS,
+EASA,^031$,,MASS_BALANCE,
+EASA,^032$,,PERFORMANCE,
+EASA,^033$,,FLIGHT_PLANNING,
+EASA,^040$,,HUMAN_PERFORMANCE,
+EASA,^050$,,METEOROLOGY,
+EASA,^061$,,GENERAL_NAVIGATION,
+EASA,^062$,,RADIO_NAVIGATION,
+EASA,^07[01]$,,OPERATIONAL_PROCEDURES,
+EASA,^08[0-2]$,,PRINCIPLES_OF_FLIGHT,
+EASA,^09[01]$,,COMMUNICATIONS,
+FAA,^CH01A$,,AIR_LAW,ground-school sections: pilot certificates / training requirements
+FAA,^CH01B$,,AIR_LAW,certificate levels and privileges
+FAA,^CH01C$,,HUMAN_PERFORMANCE,
+FAA,^CH02A$,,AGK_AIRFRAME_SYSTEMS,
+FAA,^CH02B$,,AGK_POWERPLANT,
+FAA,^CH02C$,,INSTRUMENTS,
+FAA,^CH03[ABC]$,,PRINCIPLES_OF_FLIGHT,
+FAA,^CH04A$,,OPERATIONAL_PROCEDURES,"collision avoidance, wake, runway incursion"
+FAA,^CH04B$,,AIR_LAW,airport markings/signs/lighting (ICAO Annex 14 / EASA 010)
+FAA,^CH04C$,,GENERAL_NAVIGATION,
+FAA,^CH04D$,,AIR_LAW,
+FAA,^CH05A$,,AIR_LAW,ATC services (EASA 010 ATS)
+FAA,^CH05B$,,COMMUNICATIONS,
+FAA,^CH05C$,,FLIGHT_PLANNING,"NOTAM, chart supplement, briefing sources"
+FAA,^CH0[67][A-D]$,,METEOROLOGY,
+FAA,^CH08A$,,PERFORMANCE,
+FAA,^CH08B$,,MASS_BALANCE,
+FAA,^CH08C$,,GENERAL_NAVIGATION,flight computer
+FAA,^CH09A$,,GENERAL_NAVIGATION,
+FAA,^CH09[BCD]$,,RADIO_NAVIGATION,
+FAA,^CH10[AB]$,,HUMAN_PERFORMANCE,
+FAA,^CH11[AB]$,,FLIGHT_PLANNING,
+Transport Canada,^AIR-LAW$,,AIR_LAW,
+Transport Canada,^MET$,,METEOROLOGY,
+Transport Canada,^NAV$,,GENERAL_NAVIGATION,
+*,,Fundamentals of Instruction|Airman Certification Standards,INSTRUCTION,
+*,,Density Altitude|Glid|Crosswind Component|General / Performance|Performance and Limitations$,PERFORMANCE,
+*,,Weight and Balance|Load Shift,MASS_BALANCE,
+*,,Weather|Meteorolog|Fronts|Convective|Winds and Temperatures|In-Flight Advisories|Air Mass|Inversion,METEOROLOGY,
+*,,Human|Aeromedical|Decision|Hazardous Attitude|Crew Resource|Risk Management|Safety Culture|Physiolog|Fatigue|Night Vision|Visual Illusion|Spatial Disorientation|Supplemental Oxygen,HUMAN_PERFORMANCE,
+*,,Load Factor|Stall|Aerodynamic|V-n|V-Speeds|Four Forces|Dissymmetry|Ground Resonance|Settling with Power|Torque|Speed Limitations,PRINCIPLES_OF_FLIGHT,
+*,,Airspeed Indicator|Flight Instrument|Magnetic Compass,INSTRUMENTS,
+*,,Carburetor|Carburettor|Engine Systems|Powerplant|Magneto,AGK_POWERPLANT,
+*,,Aircraft Systems|Engine Fail.*Systems,AGK_AIRFRAME_SYSTEMS,
+*,,Transponder|Traffic Advisories|LAHSO|Non-Towered,AIR_LAW,SSR codes / ATC procedures sit in EASA 010
+*,,GPS|VOR|RAIM|Navigation Systems,RADIO_NAVIGATION,
+*,,Dead Reckoning|Pilotage|Pressure Pattern,GENERAL_NAVIGATION,
+*,,Flight Planning|Preflight Planning|Airport Information Sources,FLIGHT_PLANNING,
+*,,Wake Turbulence|Engine Failure|Emergency Approach|Emergency Procedures - Engine|Go-Around|Downwind Landing|Snow|Slush|Surface Hazards|Towing|Passenger Briefing|Participant Briefing|Landing Lights,OPERATIONAL_PROCEDURES,
+*,,Phraseology|Radio Communications|Heliport Communications|Emergency Communications,COMMUNICATIONS,
+*,,Airspace|Regulation|Certification|Airworthiness|Right of Way|Signage|Runway|VASI|Beacon|Traffic Pattern|Air Law|ELT|Registration|Remote Identification|Light Signals|Accident|Incident|Altitude Deviation|Inspection|Collision Avoidance|Equipment Requirements|Aerodrome Operations|Federal Aviation|Non-Towered,AIR_LAW,
+*,,Aeronautics,PRINCIPLES_OF_FLIGHT,fallback for TC 'Aeronautics' mixed subjects; per-question overrides refine it

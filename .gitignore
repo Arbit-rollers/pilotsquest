@@ -1,0 +1,19 @@
+# Raw third-party source drops (textbook-derived text / page images) — never publish
+/JAA-Sets/
+/datasets/
+/books/
+
+# Local-only
+/.pilotquest-git-backup/
+/.claude/
+.DS_Store
+__pycache__/
+*.pyc
+
+# Question bank: generated or bulky local artefacts
+/pilot-question-bank/backups/
+/pilot-question-bank/views/
+/pilot-question-bank/inbox/processed/
+/pilot-question-bank/data/reels/
+/pilot-question-bank/data/Claude outputs/
+/pilot-question-bank/export/

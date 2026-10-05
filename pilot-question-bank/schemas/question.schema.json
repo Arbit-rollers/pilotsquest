@@ -1,0 +1,381 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pilot-question-bank/schemas/question.schema.json",
+  "title": "Pilot Theory Examination Question",
+  "description": "Canonical record for one usable or quarantined pilot theory exam question. One JSON object per line in the authority JSONL files (data/<authority>/.../*.jsonl).",
+  "type": "object",
+  "required": [
+    "question_id",
+    "authority",
+    "country_or_region",
+    "licence",
+    "subject",
+    "question_type",
+    "question_text",
+    "choices",
+    "correct_answer",
+    "explanation",
+    "difficulty",
+    "provenance",
+    "source_title",
+    "source_url",
+    "copyright_status",
+    "reuse_allowed",
+    "verified",
+    "last_verified"
+  ],
+  "properties": {
+    "question_id": {
+      "type": "string",
+      "description": "Format: <AUTHORITY>-<LICENCECODE>-<SUBJECTCODE>-<sequence>, e.g. EASA-PPLA-AL-000001",
+      "pattern": "^[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{6}$"
+    },
+    "authority": {
+      "type": "string"
+    },
+    "country_or_region": {
+      "type": "string"
+    },
+    "licence": {
+      "type": "string",
+      "description": "Authority's own licence code, verbatim (e.g. PPL(A), LAPL(A), Part 61 PPL)"
+    },
+    "track_id": {
+      "type": "string",
+      "description": "<AUTHORITY>:<LICENCE> key from taxonomy/licences.json, e.g. EASA:ATPL(A)"
+    },
+    "licence_level": {
+      "type": "string",
+      "enum": [
+        "recreational",
+        "private",
+        "commercial",
+        "airline_transport",
+        "instructor",
+        "remote_pilot"
+      ]
+    },
+    "aircraft_class": {
+      "type": "string",
+      "enum": [
+        "aeroplane",
+        "helicopter",
+        "glider",
+        "ultralight",
+        "uas"
+      ]
+    },
+    "applicable_licences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Every track_id this question is valid study material for (own track first)."
+    },
+    "subject_code": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "chapter_number": {
+      "type": "integer"
+    },
+    "chapter_title": {
+      "type": "string",
+      "description": "Chapter/section within the subject. Backfilled from `subject` by scripts/categorize.py when the source has none."
+    },
+    "topic": {
+      "type": "string",
+      "enum": [
+        "AIR_LAW",
+        "AGK_AIRFRAME_SYSTEMS",
+        "AGK_POWERPLANT",
+        "INSTRUMENTS",
+        "MASS_BALANCE",
+        "PERFORMANCE",
+        "FLIGHT_PLANNING",
+        "HUMAN_PERFORMANCE",
+        "METEOROLOGY",
+        "GENERAL_NAVIGATION",
+        "RADIO_NAVIGATION",
+        "OPERATIONAL_PROCEDURES",
+        "PRINCIPLES_OF_FLIGHT",
+        "COMMUNICATIONS",
+        "INSTRUCTION"
+      ],
+      "description": "Cross-authority study area (taxonomy/topics.json). Derived by scripts/categorize.py unless topic_source = explicit."
+    },
+    "topic_name": {
+      "type": "string"
+    },
+    "topic_source": {
+      "type": "string",
+      "enum": [
+        "explicit",
+        "override",
+        "rule"
+      ]
+    },
+    "syllabus_version": {
+      "type": "string"
+    },
+    "learning_objective_code": {
+      "type": "string"
+    },
+    "learning_objective": {
+      "type": "string"
+    },
+    "question_type": {
+      "type": "string",
+      "enum": [
+        "single_choice",
+        "multiple_response",
+        "true_false",
+        "calculation",
+        "chart_plotting",
+        "short_answer"
+      ]
+    },
+    "question_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "choices": {
+      "type": "array",
+      "minItems": 0,
+      "description": "Required (>=2 items) for single_choice/multiple_response/true_false. Empty for short_answer/calculation questions, whose correct_answer is a free-text string instead of a choice label.",
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "text"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "correct_answer": {
+      "description": "Choice label (single_choice) or array of labels (multiple_response)",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "explanation": {
+      "type": "string"
+    },
+    "incorrect_answer_explanations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "regulation_reference": {
+      "type": "string"
+    },
+    "handbook_reference": {
+      "type": "string"
+    },
+    "calculation_steps": {
+      "type": "string"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ]
+    },
+    "question_style": {
+      "type": "string",
+      "enum": [
+        "exam_style",
+        "concept_recall"
+      ],
+      "description": "concept_recall = templated recall item: flashcards only, never exam practice."
+    },
+    "quality_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Open quality/licensing issues. Derived; see scripts/taxonomy.py quality_flags()."
+    },
+    "aircraft_category": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string",
+      "default": "en"
+    },
+    "provenance": {
+      "type": "string",
+      "enum": [
+        "official_released",
+        "official_sample",
+        "public_domain",
+        "open_licensed",
+        "original_syllabus_aligned",
+        "third_party_reference_only",
+        "restricted_do_not_use",
+        "provenance_uncertain"
+      ]
+    },
+    "source_title": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "source_location": {
+      "type": "string"
+    },
+    "copyright_status": {
+      "type": "string"
+    },
+    "reuse_allowed": {
+      "type": "boolean"
+    },
+    "verified": {
+      "type": "boolean"
+    },
+    "last_verified": {
+      "type": "string",
+      "format": "date"
+    },
+    "duplicate_group_id": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "media": {
+      "type": "array",
+      "description": "Media assets (images/charts/diagrams/audio) required to answer this question. Mirrors the media table in database_schema.sql.",
+      "items": {
+        "type": "object",
+        "required": [
+          "media_type",
+          "file_path",
+          "alt_text",
+          "licence"
+        ],
+        "properties": {
+          "media_type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "chart",
+              "diagram",
+              "audio",
+              "video",
+              "document"
+            ]
+          },
+          "file_path": {
+            "type": "string"
+          },
+          "alt_text": {
+            "type": "string"
+          },
+          "attribution": {
+            "type": "string"
+          },
+          "licence": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "quarantined",
+        "active",
+        "archived",
+        "rejected"
+      ],
+      "default": "quarantined"
+    },
+    "source_record_id": {
+      "type": "string",
+      "description": "The contributor's own ID for this record, kept for traceability."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "question_type": {
+            "enum": [
+              "single_choice",
+              "multiple_response",
+              "true_false"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "choices": {
+            "minItems": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "provenance": {
+            "const": "restricted_do_not_use"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reuse_allowed": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "provenance": {
+            "const": "provenance_uncertain"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reuse_allowed": {
+            "const": false
+          },
+          "status": {
+            "const": "quarantined"
+          }
+        }
+      }
+    }
+  ]
+}
